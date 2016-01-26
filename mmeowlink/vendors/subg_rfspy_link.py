@@ -13,6 +13,7 @@ from .. exceptions import InvalidPacketReceived, CommsException, SubgRfspyVersio
 
 from serial_interface import SerialInterface
 from serial_rf_spy import SerialRfSpy
+from subg_rfspy_radio_config import SubgRfspyRadioConfig
 
 io  = logging.getLogger( )
 log = io.getChild(__name__)
@@ -46,24 +47,18 @@ class SubgRfspyLink(SerialInterface):
     0xcc: "Zero Data"
   }
 
-  def __init__(self, device):
+  def __init__(self, device, radio_config=None):
     self.timeout = 1
     self.device = device
     self.speed = 19200
-    self.channel = 0
+    self.radio_config = radio_config
 
     self.open()
+    self.init_radio()
 
   def update_register(self, reg, value, timeout=1):
     args = chr(reg) + chr(value)
     self.serial_rf_spy.do_command(self.serial_rf_spy.CMD_UPDATE_REGISTER, args, timeout=timeout)
-
-  def set_base_freq(self, freq_mhz):
-    val = ((freq_mhz * 1000000)/(self.FREQ_XTAL/float(2**16)))
-    val = long(val)
-    self.update_register(self.REG_FREQ0, val & 0xff)
-    self.update_register(self.REG_FREQ1, (val >> 8) & 0xff)
-    self.update_register(self.REG_FREQ2, (val >> 16) & 0xff)
 
   def check_setup(self):
     self.serial_rf_spy = SerialRfSpy(self.serial)
@@ -79,6 +74,16 @@ class SubgRfspyLink(SerialInterface):
     if version not in self.SUPPORTED_VERSIONS:
       raise SubgRfspyVersionNotSupported("Your subg_rfspy version (%s) is not in the supported version list: %s" % (version, "".join(self.SUPPORTED_VERSIONS)))
 
+  def init_radio(self):
+    for register in SubgRfspyRadioConfig.available_registers():
+      id = SubgRfspyRadioConfig.REGISTERS[register]["reg"]
+      value = self.radio_config.get_config(register)
+
+      print("Init Radio: register %s (0x%x) set to 0x%x" % (register, id, value))
+      # resp = self.serial_rf_spy.do_command(SerialRfSpy.CMD_UPDATE_REGISTER, chr(id) + chr(value))
+      # if ord(resp) != 1:
+      #   raise NotImplementedError("Cannot set register %s (0x%x) - received response of %i" % (register, id, ord(resp)))
+
   def write( self, string, repetitions=1, repetition_delay=0, timeout=None ):
     rf_spy = self.serial_rf_spy
 
@@ -90,10 +95,11 @@ class SubgRfspyLink(SerialInterface):
         transmissions = self.MAX_REPETITION_BATCHSIZE
       remaining_messages = remaining_messages - transmissions
 
-      crc = CRC8.compute(string)
+      channel = self.radio_config.tx_channel
+      encoded = FourBySix.encode(string)
+      message = chr(channel) + chr(transmissions - 1) + chr(repetition_delay) + encoded
 
-      message = chr(self.channel) + chr(transmissions - 1) + chr(repetition_delay) + FourBySix.encode(string)
-
+      print("WRITE: (%s / %d / %s):\n%s" % (channel, transmissions - 1, repetition_delay, hexdump(message)))
       rf_spy.do_command(rf_spy.CMD_SEND_PACKET, message, timeout=timeout)
 
   def get_packet( self, timeout=None ):
@@ -106,7 +112,9 @@ class SubgRfspyLink(SerialInterface):
     timeout_ms_high = int(timeout_ms / 256)
     timeout_ms_low = int(timeout_ms - (timeout_ms_high * 256))
 
-    resp = rf_spy.do_command(SerialRfSpy.CMD_GET_PACKET, chr(self.channel) + chr(timeout_ms_high) + chr(timeout_ms_low), timeout=timeout + 1)
+    channel = self.radio_config.rx_channel
+
+    resp = rf_spy.do_command(SerialRfSpy.CMD_GET_PACKET, chr(channel) + chr(timeout_ms_high) + chr(timeout_ms_low), timeout=timeout + 1)
     if not resp:
       raise CommsException("Did not get a response, or response is too short: %s" % len(resp))
 
@@ -122,11 +130,10 @@ class SubgRfspyLink(SerialInterface):
       rssi = (( rssi_dec - 256) / 2) - rssi_offset
     else:
       rssi = (rssi_dec / 2) - rssi_offset
-      
+
     sequence = resp[1]
 
     return {'rssi':rssi, 'sequence':sequence, 'data':decoded}
 
   def read( self, timeout=None ):
     return self.get_packet(timeout)['data']
-

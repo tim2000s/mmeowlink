@@ -20,10 +20,12 @@ class MMCommanderLink(SerialInterface):
   VERSION_FETCH_COMMAND = 0x00
   TIMEOUT = 1
 
-  def __init__(self, device):
+  def __init__(self, device, radio_config=None):
     self.timeout = 1
     self.device = device
     self.speed = 57600
+    # Radio config is not changeable on this device, so we don't use the
+    # radio_config variable
 
     SerialInterface.__init__(self)
     self.open()

@@ -4,36 +4,16 @@ import sys
 from decocare.lib import CRC8
 from mmeowlink.exceptions import CommsException,InvalidPacketReceived
 from mmeowlink.vendors.subg_rfspy_link import SubgRfspyLink
+from mmeowlink.vendors.subg_rfspy_radio_config import SubgRfspyRadioConfig
 
 class MMTune:
-  FREQ_RANGES = {
-    'US': { 'start': 916.5, 'end': 916.9, 'default': 916.630 },
-    'WW': { 'start': 867.5, 'end': 868.5, 'default': 868.328 }
-  }
 
-  def __init__(self, link, pumpserial, locale='US'):
+  def __init__(self, link, pumpserial, radio_locale):
     self.link = link
     self.pumpserial = pumpserial
-    self.locale = locale
-    self.scan_range = self.FREQ_RANGES[self.locale]
+    self.scan_range = SubgRfspyRadioConfig.scan_range(radio_locale)
 
   def run(self):
-    ############################################################################
-    # Commented these out as they may be causing issues with certain pumps:
-    ############################################################################
-    # self.link.update_register(SubgRfspyLink.REG_MDMCFG4, 0xd9)
-    #
-    # # Sometimes getting lower ber with 0x07 here (default is 0x03)
-    # self.link.update_register(SubgRfspyLink.REG_AGCCTRL2, 0x07)
-    #
-    # self.link.update_register(SubgRfspyLink.REG_AGCCTRL1, 0x40)
-    #
-    # # With rx bw > 101kzHZ, this should be 0xB6, otherwise 0x56
-    # self.link.update_register(SubgRfspyLink.REG_FREND1, 0x56)
-    #
-    # # default (0x91) seems to work best
-    # #self.link.update_register(SubgRfspyLink.REG_AGCCTRL0, 0x91)
-
     #print "waking..."
     self.wakeup()
 
