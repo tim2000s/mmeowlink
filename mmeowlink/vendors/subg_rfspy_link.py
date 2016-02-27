@@ -90,10 +90,11 @@ class SubgRfspyLink(SerialInterface):
         transmissions = self.MAX_REPETITION_BATCHSIZE
       remaining_messages = remaining_messages - transmissions
 
+      print("WRITE (message):\n%s" % (hexdump(string)))
       encoded = FourBySix.encode(string)
 
       message = chr(self.channel) + chr(transmissions - 1) + chr(repetition_delay) + encoded
-      # print("WRITE: (%s / %d / %s):\n%s" % (self.channel, transmissions - 1, repetition_delay, hexdump(encoded)))
+      print("WRITE: (%s / %d / %s):\n%s" % (self.channel, transmissions - 1, repetition_delay, hexdump(encoded)))
 
       rf_spy.do_command(rf_spy.CMD_SEND_PACKET, message, timeout=timeout)
 
@@ -103,12 +104,13 @@ class SubgRfspyLink(SerialInterface):
     if timeout is None:
       timeout = self.timeout
 
+    print("Timeout: %d and %d" % (timeout, self.timeout))
     timeout_ms = timeout * 1000
     timeout_ms_high = int(timeout_ms / 256)
     timeout_ms_low = int(timeout_ms - (timeout_ms_high * 256))
 
     resp = rf_spy.do_command(SerialRfSpy.CMD_GET_PACKET, chr(self.channel) + chr(timeout_ms_high) + chr(timeout_ms_low), timeout=timeout + 1)
-    # print("GET_PACKET: (%s / %d):\n%s" % (self.channel, timeout, hexdump(resp)))
+    print("GET_PACKET: (%s / %d):\n%s" % (self.channel, timeout, hexdump(resp)))
 
     if not resp:
       raise CommsException("Did not get a response, or response is too short: %s" % len(resp))
@@ -118,7 +120,7 @@ class SubgRfspyLink(SerialInterface):
       raise CommsException("Received an error response %s" % self.RFSPY_ERRORS[ resp[0] ])
 
     decoded = FourBySix.decode(resp[2:])
-    # print("DECODED_PACKET:\n%s" % hexdump(decoded))
+    print("DECODED_PACKET:\n%s" % hexdump(decoded))
 
     rssi_dec = resp[0]
     rssi_offset = 73

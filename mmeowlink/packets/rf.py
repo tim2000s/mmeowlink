@@ -71,6 +71,8 @@ class Packet (_Packet):
 
   @classmethod
   def fromBuffer (klass, buf, stamp=None, timezone=None, chan=None):
+    if not buf:
+      return None
     stamp = stamp or time.time( )
     # dt = datetime.fromtimestamp(stamp).replace(tzinfo=self.args.timezone)
     dt = datetime.fromtimestamp(stamp).replace(tzinfo=timezone)

@@ -55,9 +55,15 @@ class Sender (object):
   def done (self):
     needs_params = self.command.params and len(self.command.params) > 0 or False
     if needs_params and not self.sent_params:
+      print("Done? No - needs params and not sent_params")
       return False
 
-    return self.command.done( )
+    command_done = self.command.done( )
+    if command_done:
+      print("Done? Yes - Command is done")
+    else:
+      print("Done? No - command thinks we are not yet finished")
+    return command_done
 
   def respond (self, resp):
     if resp.valid and resp.serial == self.command.serial:
