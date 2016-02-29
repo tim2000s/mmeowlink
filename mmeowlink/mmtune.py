@@ -2,7 +2,8 @@
 
 import sys
 from decocare.lib import CRC8
-from mmeowlink.exceptions import CommsException,InvalidPacketReceived
+from exceptions import CommsException
+
 from mmeowlink.vendors.subg_rfspy_link import SubgRfspyLink
 from mmeowlink.vendors.subg_rfspy_radio_config import SubgRfspyRadioConfig
 
@@ -41,7 +42,7 @@ class MMTune:
         packet = self.get_packet(0.080)
         success_count += 1
         rssi_readings.append(packet["rssi"])
-      except (CommsException,InvalidPacketReceived):
+      except CommsException:
         error_count += 1
         rssi_readings.append(-99)
 
@@ -77,7 +78,7 @@ class MMTune:
       try:
         packet = self.get_packet(0.08)
         #print "packet = " + str(packet)
-      except (CommsException, InvalidPacketReceived):
+      except CommsException:
         packet = None
         #print "No response..."
         pass
@@ -94,7 +95,7 @@ class MMTune:
       self.send_packet("a7" + self.pumpserial + "5d00", 200)
       try:
         wake_ack = self.get_packet(9) # wait 9 s for response
-      except (CommsException, InvalidPacketReceived):
+      except CommsException:
         wake_ack = None
         #print "No response..."
         pass

@@ -5,7 +5,7 @@ import struct
 from datetime import datetime
 from decocare import lib
 
-from .. exceptions import InvalidPacketReceived
+from .. exceptions import CommsException
 
 _Packet = namedtuple('Packet', [
   'type', 'serial', 'op', 'payload', 'crc',
@@ -71,6 +71,8 @@ class Packet (_Packet):
 
   @classmethod
   def fromBuffer (klass, buf, stamp=None, timezone=None, chan=None):
+    if not buf:
+      return None
     stamp = stamp or time.time( )
     # dt = datetime.fromtimestamp(stamp).replace(tzinfo=self.args.timezone)
     dt = datetime.fromtimestamp(stamp).replace(tzinfo=timezone)
@@ -94,7 +96,7 @@ class Packet (_Packet):
       valid = calculated == crc
 
     if not valid:
-      raise InvalidPacketReceived
+      raise CommsException
 
     record = dict(date=stamp * 1000
            , dateString=dt.isoformat( )

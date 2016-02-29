@@ -6,9 +6,9 @@ import logging
 import time
 
 from decocare.lib import hexdump
-from .. exceptions import InvalidPacketReceived, CommsException, MMCommanderNotWriteable
-
 from serial_interface import SerialInterface
+
+from .. exceptions import UnableToCommunicateWithRadio, MMCommanderNotWriteable, CommsException
 
 io  = logging.getLogger( )
 log = io.getChild(__name__)
@@ -40,7 +40,7 @@ class MMCommanderLink(SerialInterface):
     self.serial.write(chr(self.VERSION_FETCH_COMMAND))
     version = self.serial.read(1)
     if len(version) == 0:
-      raise CommsException("Could not get version from mmcommander device. Have you got the right port/device and radio_type?")
+      raise UnableToCommunicateWithRadio("Could not get version from mmcommander device. Have you got the right port/device and radio_type?")
 
   def write( self, string, repetitions=1, timeout=None ):
     if timeout is None:
@@ -133,7 +133,7 @@ class MMCommanderLink(SerialInterface):
         # This is raised as a concern in the mmcommander code, so I
         # currently treat this as an error case
         if ord(body_len) > 74:
-          raise InvalidPacketReceived("Warning - received message > 74 chars")
+          raise CommsException("Warning - Invalid Packet Received - received message > 74 chars")
 
         message = self.serial.read(ord(body_len))
         if (message is None) or (len(message) == 0):

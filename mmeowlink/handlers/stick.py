@@ -1,11 +1,8 @@
 
 from decocare import session, lib, commands
 from .. packets.rf import Packet
-from .. exceptions import InvalidPacketReceived, CommsException
-
 
 import logging
-import time
 
 from decocare import lib
 
@@ -58,8 +55,15 @@ class Sender (object):
   def done (self):
     needs_params = self.command.params and len(self.command.params) > 0 or False
     if needs_params and not self.sent_params:
+      print("Done? No - needs params and not sent_params")
       return False
-    return self.command.done( )
+
+    command_done = self.command.done( )
+    if command_done:
+      print("Done? Yes - Command is done")
+    else:
+      print("Done? No - command thinks we are not yet finished")
+    return command_done
 
   def respond (self, resp):
     if resp.valid and resp.serial == self.command.serial:
@@ -120,23 +124,15 @@ class Sender (object):
 
   def __call__ (self, command):
     self.command = command
+    self.prelude()
+    self.upload()
 
-    for retry_count in range(self.STANDARD_RETRY_COUNT):
-      try:
-        self.prelude()
-        self.upload()
+    while not self.done( ):
+      resp = self.wait_response( )
+      if resp:
+        self.respond(resp)
 
-        while not self.done( ):
-          resp = self.wait_response( )
-          if resp:
-            self.respond(resp)
-
-        return command
-      except InvalidPacketReceived as e:
-        log.error("Invalid Packet Received - '%s' - retrying: %s of %s" % (e, retry_count, self.STANDARD_RETRY_COUNT))
-      except CommsException as e:
-        log.error("Timed out or other comms error - %s - retrying: %s of %s" % (e, retry_count, self.STANDARD_RETRY_COUNT))
-      time.sleep(self.RETRY_BACKOFF * retry_count)
+    return command
 
 class Repeater (Sender):
 
@@ -149,17 +145,7 @@ class Repeater (Sender):
 
     self.link.write(buf, repetitions=repetitions)
 
-    # Sometimes the first packet received will be mangled by the simultaneous
-    # transmission of a CGMS and the pump. We thus retry on invalid packets
-    # being received. Note how ever that we do *not* retry on timeouts, since
-    # our wait period is typically very long here, which would lead to long
-    # waits with no activity. It's better to fail and retry externally
-    for retry_count in range(retry_count):
-      try:
-        self.wait_for_ack(timeout=ack_wait_seconds)
-        return True
-      except InvalidPacketReceived:
-        log.error("Invalid Packet Received - retrying: %s of %s" % (retry_count, self.STANDARD_RETRY_COUNT))
+    self.wait_for_ack(timeout=ack_wait_seconds)
 
 class Pump (session.Pump):
   STANDARD_RETRY_COUNT = 3
@@ -180,10 +166,5 @@ class Pump (session.Pump):
   def execute (self, command):
     command.serial = self.serial
 
-    for retry_count in range(self.STANDARD_RETRY_COUNT):
-      try:
-          sender = Sender(self.link)
-          return sender(command)
-      except (CommsException, AssertionError) as e:
-          log.error("Timed out or other comms exception - %s - retrying: %s of %s" % (e, retry_count, self.STANDARD_RETRY_COUNT))
-          time.sleep(self.RETRY_BACKOFF * retry_count)
+    sender = Sender(self.link)
+    return sender(command)
