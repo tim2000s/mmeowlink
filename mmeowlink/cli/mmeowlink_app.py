@@ -21,13 +21,18 @@ class MMeowlinkApp(messages.SendMsgApp):
     link.open()
 
     self.pump = Pump(self.link, args.serial)
+
+    # Early return if we don't want to send any radio comms. Useful from both
+    # the command line and for MMTuneApp
     if args.no_rf_prelude:
       return
+
     if not args.autoinit:
       if args.init:
         self.pump.power_control(minutes=args.session_life)
     else:
       self.autoinit(args)
+
     self.sniff_model( )
 
   def postlude(self, args):

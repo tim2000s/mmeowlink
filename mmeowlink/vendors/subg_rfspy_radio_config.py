@@ -52,8 +52,11 @@ class SubgRfspyRadioConfig(object):
 
   FREQ_RANGES = {
     'usa': { 'start': 916.5, 'end': 916.9, 'default': 916.630 },
-    'worldwide': { 'start': 867.5, 'end': 868.5, 'default': 868.328 }
+    'worldwide': { 'start': 867.5, 'end': 868.4, 'default': 868.328 }
   }
+
+  # Crystal frequency of the CC111X radio:
+  FREQ_XTAL = 24000000
 
   @classmethod
   def available_registers(cls):
@@ -63,10 +66,6 @@ class SubgRfspyRadioConfig(object):
   def available_locales(cls):
     return sorted(cls.FREQ_RANGES.keys())
 
-  @classmethod
-  def scan_range(cls, radio_locale):
-    return cls.FREQ_RANGES[radio_locale]
-
   def __init__(self):
     self.tx_channel = 0
     self.rx_channel = 0
@@ -75,7 +74,10 @@ class SubgRfspyRadioConfig(object):
     for register in self.__class__.available_registers():
       self.registers[register] = copy.copy(self.__class__.REGISTERS[register]["default"])
 
+    self.locale_usa()
+
   def locale_usa(self):
+    self.locale = 'usa'
     self.registers['freq2'] = 0x26;     # 916.541MHz is midpoint between freq of pump in free space,
     self.registers['freq1'] = 0x30;     # and pump held close to the body.
     self.registers['freq0'] = 0x70;
@@ -83,6 +85,7 @@ class SubgRfspyRadioConfig(object):
     self.registers['pa_table1'] = 0xC0; # pa power setting 10 dBm
 
   def locale_worldwide(self):
+    self.locale = 'worldwide'
     self.registers['freq2'] = 0x24;
     self.registers['freq1'] = 0x2E;
     self.registers['freq0'] = 0x38;
@@ -111,3 +114,6 @@ class SubgRfspyRadioConfig(object):
 
     print("Setting radio register: %s=0x%x" % (register, value))
     self.registers[register] = value
+
+  def get_scan_range(self):
+    return SubgRfspyRadioConfig.FREQ_RANGES[self.locale]

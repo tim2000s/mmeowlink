@@ -6,6 +6,6 @@ class SendMsgApp(MMeowlinkApp):
   are handled in MMeowlinkApp and messages in decocare.helpers
   """
   def customize_parser(self, parser):
-    return super(MMeowlinkApp, self).customize_parser(
+    return super(SendMsgApp, self).customize_parser(
       self.configure_radio_parser(parser)
     )

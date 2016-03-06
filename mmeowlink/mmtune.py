@@ -9,27 +9,48 @@ from mmeowlink.vendors.subg_rfspy_radio_config import SubgRfspyRadioConfig
 
 class MMTune:
 
-  def __init__(self, link, pumpserial, radio_locale):
+  def __init__(self, link, pumpserial):
     self.link = link
+    self.radio_config = link.radio_config
+    self.scan_range = link.radio_config.get_scan_range()
+
     self.pumpserial = pumpserial
-    self.scan_range = SubgRfspyRadioConfig.scan_range(radio_locale)
 
   def run(self):
     #print "waking..."
     self.wakeup()
 
     #print "scanning..."
-    results = self.scan_over_freq(self.scan_range['start'], self.scan_range['end'], 20)
+    results = self.scan_over_freq(
+      self.scan_range['start'],
+      self.scan_range['end'],
+      20
+    )
     results_sorted = list(reversed(sorted(results, key=lambda x: x[1:])))
 
-    set_freq = self.scan_range['default']
-    used_default = True
+    set_freq = scan_range['default']
+
     if results_sorted[0][1] > 0:
       used_default = False
       set_freq = float(results_sorted[0][0])
-    self.link.set_base_freq(set_freq)
+    else:
+      used_default = True
+
+    self.link.apply_base_freq(set_freq)
     output = {'scanDetails': results, 'setFreq': set_freq, 'usedDefault': used_default}
+
     return output
+
+  def scan_over_freq(self, start_freq, end_freq, steps):
+    step_size = (end_freq - start_freq) / steps
+    cur_freq = start_freq
+    results = []
+    while cur_freq < end_freq:
+      print("Setting frequency %f" % cur_freq)
+      self.link.apply_base_freq(cur_freq)
+      results.append(self.run_trial("%0.3f" % cur_freq))
+      cur_freq += step_size
+    return results
 
   def run_trial(self, var):
     sample_size = 5
@@ -50,17 +71,6 @@ class MMTune:
 
     #print "%s, %d, rssi:%0.1f" % (var, error_count, avg_rssi)
     return [var, success_count, avg_rssi]
-
-
-  def scan_over_freq(self, start_freq, end_freq, steps):
-    step_size = (end_freq - start_freq) / steps
-    cur_freq = start_freq
-    results = []
-    while cur_freq < end_freq:
-      self.link.set_base_freq(cur_freq)
-      results.append(self.run_trial("%0.3f" % cur_freq))
-      cur_freq += step_size
-    return results
 
   def send_packet(self, data, tx_count=1, msec_repeat_delay=0):
     buf = bytearray()
@@ -89,7 +99,7 @@ class MMTune:
 
     if awake != True:
       # Pump in free space
-      self.link.set_base_freq(self.scan_range['default'])
+      self.link.apply_base_freq(self.scan_range['default'])
 
       # Send 200 wake-up packets
       self.send_packet("a7" + self.pumpserial + "5d00", 200)

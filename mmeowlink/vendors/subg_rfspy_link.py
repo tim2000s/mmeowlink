@@ -22,21 +22,6 @@ class SubgRfspyLink(SerialInterface):
   TIMEOUT = 1
   REPETITION_DELAY = 0
   MAX_REPETITION_BATCHSIZE = 250
-  FREQ_XTAL = 24000000
-
-  REG_FREQ2 = 0x09
-  REG_FREQ1 = 0x0A
-  REG_FREQ0 = 0x0B
-  REG_MDMCFG4 = 0x0C
-  REG_MDMCFG3 = 0x0D
-  REG_MDMCFG2 = 0x0E
-  REG_MDMCFG1 = 0x0F
-  REG_MDMCFG0 = 0x10
-  REG_AGCCTRL2 = 0x17
-  REG_AGCCTRL1 = 0x18
-  REG_AGCCTRL0 = 0x19
-  REG_FREND1 = 0x1A
-  REG_FREND0 = 0x1B
 
   # Which version of subg_rfspy do we support?
   SUPPORTED_VERSIONS = ["0.6"]
@@ -54,11 +39,7 @@ class SubgRfspyLink(SerialInterface):
     self.radio_config = radio_config
 
     self.open()
-    self.init_radio()
-
-  def update_register(self, reg, value, timeout=1):
-    args = chr(reg) + chr(value)
-    self.serial_rf_spy.do_command(self.serial_rf_spy.CMD_UPDATE_REGISTER, args, timeout=timeout)
+    self.apply_radio_config()
 
   def check_setup(self):
     self.serial_rf_spy = SerialRfSpy(self.serial)
@@ -69,22 +50,35 @@ class SubgRfspyLink(SerialInterface):
     self.serial_rf_spy.send_command(self.serial_rf_spy.CMD_GET_VERSION, timeout=1)
     version = self.serial_rf_spy.get_response(timeout=1).split(' ')[1]
 
-    log.debug( 'serial_rf_spy Firmare version: %s' % version)
+    log.debug('serial_rf_spy Firmare version: %s' % version)
 
     if version not in self.SUPPORTED_VERSIONS:
       raise SubgRfspyVersionNotSupported("Your subg_rfspy version (%s) is not in the supported version list: %s" % (version, "".join(self.SUPPORTED_VERSIONS)))
 
-  def init_radio(self):
+  def apply_base_freq(self, freq_mhz):
+    self.radio_config.set_base_freq(freq_mhz)
+
+    # Optimisation: don't set all radio registers, just the frequency-related ones:
+    for register in ['freq0', 'freq1', 'freq2']:
+      self.update_radio(register, self.radio_config.get_config(register))
+      time.sleep(1)
+
+  def apply_radio_config(self):
     for register in SubgRfspyRadioConfig.available_registers():
-      id = SubgRfspyRadioConfig.REGISTERS[register]["reg"]
-      value = self.radio_config.get_config(register)
+      self.update_radio(register, self.radio_config.get_config(register))
 
-      print("Init Radio: register %s (0x%x) set to 0x%x" % (register, id, value))
-      # resp = self.serial_rf_spy.do_command(SerialRfSpy.CMD_UPDATE_REGISTER, chr(id) + chr(value))
-      # if ord(resp) != 1:
-      #   raise NotImplementedError("Cannot set register %s (0x%x) - received response of %i" % (register, id, ord(resp)))
+  def update_radio(self, register, value, timeout=1):
+    reg = SubgRfspyRadioConfig.REGISTERS[register]["reg"]
+    args = chr(reg) + chr(value)
+    resp = self.serial_rf_spy.do_command(self.serial_rf_spy.CMD_UPDATE_REGISTER, args, timeout=timeout)
 
-  def write( self, string, repetitions=1, repetition_delay=0, timeout=None ):
+    if len(resp) != 1:
+      raise NotImplementedError("Cannot set register %s to 0x%x - received no response" % (register, value))
+
+    if ord(resp) != 1:
+      raise NotImplementedError("Cannot set register %s to 0x%x - received response of %i" % (register, id, ord(resp)))
+
+  def write(self, string, repetitions=1, repetition_delay=0, timeout=None):
     rf_spy = self.serial_rf_spy
 
     remaining_messages = repetitions
@@ -115,7 +109,7 @@ class SubgRfspyLink(SerialInterface):
 
     channel = self.radio_config.rx_channel
     resp = rf_spy.do_command(SerialRfSpy.CMD_GET_PACKET, chr(channel) + chr(timeout_ms_high) + chr(timeout_ms_low), timeout=timeout + 1)
-    print("GET_PACKET: (%s / %d):\n%s" % (self.channel, timeout, hexdump(resp)))
+    print("GET_PACKET: (%s / %d):\n%s" % (channel, timeout, hexdump(resp)))
 
     if not resp:
       raise CommsException("Did not get a response, or response is too short: %s" % len(resp))
@@ -128,14 +122,13 @@ class SubgRfspyLink(SerialInterface):
     print("DECODED_PACKET:\n%s" % hexdump(decoded))
 
     rssi_dec = resp[0]
+    sequence = resp[1]
+
     rssi_offset = 73
     if rssi_dec >= 128:
       rssi = (( rssi_dec - 256) / 2) - rssi_offset
     else:
       rssi = (rssi_dec / 2) - rssi_offset
-
-    sequence = resp[1]
-
 
     return {'rssi':rssi, 'sequence':sequence, 'data':decoded}
 
