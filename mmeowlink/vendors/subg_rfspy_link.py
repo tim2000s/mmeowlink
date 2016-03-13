@@ -6,10 +6,9 @@ import binascii
 import logging
 import time
 
-from decocare.lib import hexdump
-
+from .. exceptions import SubgRfspyVersionNotSupported, CommsException, TimeoutException
 from .. fourbysix import FourBySix
-from .. exceptions import SubgRfspyVersionNotSupported, CommsException
+from .. hex_handling import hexify
 
 from serial_interface import SerialInterface
 from serial_rf_spy import SerialRfSpy
@@ -93,7 +92,7 @@ class SubgRfspyLink(SerialInterface):
       encoded = FourBySix.encode(string)
       message = chr(channel) + chr(transmissions - 1) + chr(repetition_delay) + encoded
 
-      print("WRITE: (%s / %d / %s):\n%s" % (channel, transmissions - 1, repetition_delay, hexdump(message)))
+      print("WRITE: (%s / %d / %s):\n%s" % (channel, transmissions - 1, repetition_delay, hexify(message)))
       rf_spy.do_command(rf_spy.CMD_SEND_PACKET, message, timeout=timeout)
 
   def get_packet( self, timeout=None ):
@@ -109,17 +108,20 @@ class SubgRfspyLink(SerialInterface):
 
     channel = self.radio_config.rx_channel
     resp = rf_spy.do_command(SerialRfSpy.CMD_GET_PACKET, chr(channel) + chr(timeout_ms_high) + chr(timeout_ms_low), timeout=timeout + 1)
-    print("GET_PACKET: (%s / %d):\n%s" % (channel, timeout, hexdump(resp)))
+    print("GET_PACKET: (Channel:%s / Timeout:%d):\nResp: %s" % (channel, timeout, hexify(resp)))
 
     if not resp:
       raise CommsException("Did not get a response, or response is too short: %s" % len(resp))
+
+    if self.RFSPY_ERRORS.has_key(resp[0]) and self.RFSPY_ERRORS[ resp[0] ] == "Timeout":
+      raise TimeoutException("Timed out receiving data from radio")
 
     # If the length is less than or equal to 2, then it means we've received an error
     if len(resp) <= 2:
       raise CommsException("Received an error response %s" % self.RFSPY_ERRORS[ resp[0] ])
 
     decoded = FourBySix.decode(resp[2:])
-    print("DECODED_PACKET:\n%s" % hexdump(decoded))
+    print("DECODED_PACKET:\n%s" % hexify(decoded))
 
     rssi_dec = resp[0]
     sequence = resp[1]
@@ -130,6 +132,7 @@ class SubgRfspyLink(SerialInterface):
     else:
       rssi = (rssi_dec / 2) - rssi_offset
 
+    print("RETURNING: rssi:%d sequence:%d data:%s" % (rssi, sequence, hexify(decoded)))
     return {'rssi':rssi, 'sequence':sequence, 'data':decoded}
 
   def read( self, timeout=None ):

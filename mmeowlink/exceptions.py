@@ -1,6 +1,9 @@
 class CommsException(Exception):
   pass
 
+class TimeoutException(Exception):
+  pass
+
 class MMCommanderNotWriteable(Exception):
   pass
 
