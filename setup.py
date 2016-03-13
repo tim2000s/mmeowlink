@@ -8,6 +8,7 @@ setup(
     include_package_data=True,
     install_requires=["python-dateutil", "decocare"],
     scripts = [
+      'bin/mmeowlink-rf-dump.py',
       'bin/mmeowlink-send.py',
       'bin/mmtune.py'
     ]
