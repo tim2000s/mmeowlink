@@ -115,6 +115,7 @@ class Sender (object):
     self.send(buf)
 
   def upload (self):
+    import pdb; pdb.set_trace()
     params = self.command.params
 
     should_send = len(params) > 0
