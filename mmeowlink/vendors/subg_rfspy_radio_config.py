@@ -37,8 +37,8 @@ class SubgRfspyRadioConfig(object):
     "agcctrl2":   { "reg": 0x17, "default": 0x07 },
     "agcctrl1":   { "reg": 0x18, "default": 0x00 },
     "agcctrl0":   { "reg": 0x19, "default": 0x91 },
-    "pa_table1":  { "reg": 0x20, "default": 0x00 },
-    "pa_table0":  { "reg": 0x21, "default": 0xC0 },
+    "pa_table1":  { "reg": 0x20, "default": 0xC0 },
+    "pa_table0":  { "reg": 0x21, "default": 0x00 },
     "frend1":     { "reg": 0x1A, "default": 0xB6 },
     "frend0":     { "reg": 0x1B, "default": 0x11 },
     "fscal3":     { "reg": 0x1C, "default": 0xE9 },
@@ -112,7 +112,7 @@ class SubgRfspyRadioConfig(object):
     if register not in self.registers:
       raise NotImplementedError("Supplied radio parameter register %s is not supported" % register)
 
-    print("Setting radio register: %s=0x%x" % (register, value))
+    # print("Changing radio register in config: %s=0x%x" % (register, value))
     self.registers[register] = value
 
   def get_scan_range(self):
