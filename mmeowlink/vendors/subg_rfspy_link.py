@@ -36,6 +36,7 @@ class SubgRfspyLink(SerialInterface):
     self.device = device
     self.speed = 19200
     self.radio_config = radio_config
+    self.reply_packet = None
 
     self.open()
     self.apply_radio_config()
@@ -95,6 +96,15 @@ class SubgRfspyLink(SerialInterface):
       print("WRITE: (%s / %d / %s):\n%s" % (channel, transmissions - 1, repetition_delay, hexify(message)))
       rf_spy.do_command(rf_spy.CMD_SEND_PACKET, message, timeout=timeout)
 
+  def write_and_get(self, string, timeout):
+      channel = self.radio_config.tx_channel
+      encoded = FourBySix.encode(string)
+      message = chr(channel) + chr(0) + chr(0) + chr(0) + chr(timeout) + chr(0) + encoded
+
+      print("WRITE_AND_GET: (%s / %d / %s):\n%s" % (channel, transmissions - 1, repetition_delay, hexify(message)))
+      resp = rf_spy.do_command(rf_spy.CMD_SEND_PACKET, message, timeout=timeout)
+      return self.decode_packet( resp )
+
   def get_packet( self, timeout=None ):
     rf_spy = self.serial_rf_spy
 
@@ -108,22 +118,24 @@ class SubgRfspyLink(SerialInterface):
     channel = self.radio_config.rx_channel
     resp = rf_spy.do_command(SerialRfSpy.CMD_GET_PACKET, chr(channel) + chr(timeout_ms_high) + chr(timeout_ms_low), timeout=timeout + 1)
     # print("GET_PACKET: (Channel:%s / Timeout:%d):\nResp: %s" % (channel, timeout, hexify(resp)))
+    return self.decode_packet( resp )
 
-    if not resp:
-      raise CommsException("Did not get a response, or response is too short: %s" % len(resp))
+  def decode_packet( self, data ):
+    if not data:
+      raise CommsException("Did not get a response, or response is too short: %s" % len(data))
 
-    if self.RFSPY_ERRORS.has_key(resp[0]) and self.RFSPY_ERRORS[ resp[0] ] == "Timeout":
+    if self.RFSPY_ERRORS.has_key(data[0]) and self.RFSPY_ERRORS[ data[0] ] == "Timeout":
       raise TimeoutException("Timed out receiving data from radio")
 
     # If the length is less than or equal to 2, then it means we've received an error
-    if len(resp) <= 2:
-      raise CommsException("Received an error response %s" % self.RFSPY_ERRORS[ resp[0] ])
+    if len(data) <= 2:
+      raise CommsException("Received an error response %s" % self.RFSPY_ERRORS[ data[0] ])
 
-    decoded = FourBySix.decode(resp[2:])
+    decoded = FourBySix.decode(data[2:])
     # print("DECODED_PACKET:\n%s" % hexify(decoded))
 
-    rssi_dec = resp[0]
-    sequence = resp[1]
+    rssi_dec = data[0]
+    sequence = data[1]
 
     rssi_offset = 73
     if rssi_dec >= 128:

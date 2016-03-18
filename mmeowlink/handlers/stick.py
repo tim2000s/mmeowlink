@@ -82,23 +82,30 @@ class Sender (object):
           pass
 
   def wait_for_ack (self, timeout=.500):
+    print("wait_for_ack")
     link = self.link
 
     while not self.done( ):
+      print("wait_for_ack Not done")
       buf = link.read( timeout=timeout )
 
       resp = Packet.fromBuffer(buf)
       if self.responds_to(resp):
+        print("wait_for_ack: responds_to")
         if resp.op == 0x06:
+          print("wait_for_ack: resp is 0x06")
           return resp
 
   def responds_to (self, resp):
+    print("responds_to: checking valid and serial number")
     return resp.valid and resp.serial == self.command.serial
 
   def wait_response (self):
+    print("wait_response")
     link = self.link
     buf = link.read( )
     resp = Packet.fromBuffer(buf)
+    print("packet: %s" % (str(buf).encode('hex')))
     if self.responds_to(resp):
       return resp
 
@@ -115,24 +122,33 @@ class Sender (object):
     self.send(buf)
 
   def upload (self):
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     params = self.command.params
 
     should_send = len(params) > 0
     if should_send:
+      print("upload: should_send")
       self.wait_for_ack( )
+      print("upload: sending params")
       self.send_params( )
 
   def __call__ (self, command):
     self.command = command
+    print("__call__ starting command %0xdx (%s)" % (command.code, command.descr))
+    print("Starting prelude")
     self.prelude()
+    print("Starting upload")
     self.upload()
 
+    print("Waiting for done status")
     while not self.done( ):
+      print("Not done")
       resp = self.wait_response( )
       if resp:
+        print("Got a resp")
         self.respond(resp)
 
+    print("Done - returning from __call__")
     return command
 
 class Repeater (Sender):
