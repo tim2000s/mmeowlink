@@ -64,7 +64,8 @@ def setup_medtronic_link (self):
   radio_type = self.device.get('radio_type')
   port = self.device.get('port')
 
-  radio_config = RadioConfigBuilder.build(radio_type, args)
+  import pdb; pdb.set_trace()
+  radio_config = RadioConfigBuilder.build(radio_type)
 
   link = LinkBuilder().build(radio_type, port, radio_config)
   self.pump = Pump(link, serial)
