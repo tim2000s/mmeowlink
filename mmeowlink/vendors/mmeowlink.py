@@ -30,7 +30,7 @@ def configure_app (app, parser):
     help='Radio type: mmcommander or subg_rfspy'
   )
   parser.add_argument(
-    'port',
+    'port', default='scan',
     help='Radio serial port. e.g. /dev/ttyACM0 or /dev/ttyMFD1'
   )
 
@@ -58,8 +58,11 @@ def setup_medtronic_link (self):
   serial = self.device.get('serial')
   radio_type = self.device.get('radio_type')
   port = self.device.get('port')
+  builder = LinkBuilder( )
+  if port == 'scan':
+    port = builder.scan( )
 
-  link = LinkBuilder().build(radio_type, port)
+  link = builder.build(radio_type, port)
   self.pump = Pump(link, serial)
 
 import logging
