@@ -17,8 +17,6 @@ class MMTune:
 
     # MMTune can only be used with the SubgRfspy firmware, as MMCommander
     # cannot change frequencies
-    print "type = %s" % type(link)
-    assert type(link) == RileyLink
     assert ((type(link) == SubgRfspyLink) or (type(link) == RileyLink))
 
     self.pumpserial = pumpserial

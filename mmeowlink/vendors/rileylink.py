@@ -24,6 +24,7 @@ class RileyLink(DefaultDelegate, object):
         self.timeout = 1
         self.channel = 0
         self.ready_to_read = False
+        self.p = None
         self.open()
 
     def handleNotification(self, cHandle, data):
@@ -33,6 +34,9 @@ class RileyLink(DefaultDelegate, object):
             print "unexpected notification on: %s" % cHandle
     
     def open(self):
+        if self.p != None:
+            return
+
         name_uuid = UUID(0x2a00)
  
         self.p = Peripheral(self.port, ADDR_TYPE_PUBLIC)
@@ -86,8 +90,6 @@ class RileyLink(DefaultDelegate, object):
     def write(self, string, repetitions=1, repetition_delay=0, timeout=None ):
         if timeout is None:
             timeout = self.timeout
-
-        asdf
 
         remaining_messages = repetitions
         while remaining_messages > 0:
