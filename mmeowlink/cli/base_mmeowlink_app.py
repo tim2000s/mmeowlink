@@ -12,9 +12,10 @@ class BaseMMeowlinkApp(decocare_messages.SendMsgApp):
   Base class used by other apps here
   """
   def configure_radio_params(self, parser):
-    parser.add_argument('--radio_type', dest='radio_type', default='subg_rfspy', choices=['mmcommander', 'subg_rfspy'])
+    parser.add_argument('--radio_type', dest='radio_type', default='subg_rfspy', choices=['mmcommander', 'subg_rfspy', 'rileylink'])
     parser.add_argument('--mmcommander', dest='radio_type', action='store_const', const='mmcommander')
     parser.add_argument('--subg_rfspy', dest='radio_type', action='store_const', const='subg_rfspy')
+    parser.add_argument('--rileylink', dest='radio_type', action='store_const', const='rileylink')
 
     return parser
 
