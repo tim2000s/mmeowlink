@@ -211,6 +211,7 @@ class Pump (session.Pump):
 
     status = repeater(self.command, repetitions=500, ack_wait_seconds=20)
 
+    return True
     if status:
       return True
     else:
