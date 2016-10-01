@@ -32,7 +32,7 @@ class DetectRadioComms(object):
       except CommsException as e:
         pass
       except InvalidPacketReceived:
-        print "%s (N/A db) - Corrupt packet" % ts
+        print "Corrupt packet received; ignoring"
 
       # EG:   A7 12 31 23 22 5D .. ..
       # POS:  01234567890123456789
