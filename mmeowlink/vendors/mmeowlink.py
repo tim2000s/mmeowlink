@@ -91,7 +91,10 @@ class mmtune (medtronic.MedtronicTask):
     # setup_logging(self)
     setup_medtronic_link(self)
     serial = self.device.get('serial')
-    self.mmtune = MMTune(self.pump.link, serial)
+    radio_locale = self.device.get('radio_locale')
+    if not radio_locale:
+      radio_locale = 'US'
+    self.mmtune = MMTune(self.pump.link, serial, radio_locale)
 
   def main (self, args, app):
     return self.mmtune.run( )
