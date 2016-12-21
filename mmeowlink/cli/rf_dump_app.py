@@ -42,4 +42,5 @@ class RfDumpApp(BaseMMeowlinkApp):
       except CommsException as e:
         pass
       except InvalidPacketReceived:
+        ts = datetime.now()
         print "%s (N/A db) - Corrupt packet" % ts
