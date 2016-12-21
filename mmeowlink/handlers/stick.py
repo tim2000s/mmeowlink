@@ -216,7 +216,7 @@ class Pump (session.Pump):
     # See if the pump is on and responding to messages. If it isn't, then
     # we need to send a wakeup to the pump
     if self.check_pump_awake():
-      log.info('Pump %s is already responding. Not sneding wakeup messages' % self.serial)
+      log.info('Pump %s is already responding. Not sending wakeup messages' % self.serial)
       return True
     else:
       log.info('BEGIN POWER CONTROL %s' % self.serial)
